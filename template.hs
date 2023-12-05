@@ -9,17 +9,29 @@ data Inst =
   deriving Show
 type Code = [Inst]
 
--- createEmptyStack :: Stack
-createEmptyStack = undefined -- TODO, Uncomment the function signature after defining Stack
+data NumberOrBool = N Int | B Bool
+  deriving (Show)
 
--- stack2Str :: Stack -> String
-stack2Str = undefined -- TODO, Uncomment all the other function type declarations as you implement them
+type Stack = [NumberOrBool]
 
--- createEmptyState :: State
-createEmptyState = undefined -- TODO, Uncomment the function signature after defining State
+type State = [(String, NumberOrBool)]
 
--- state2Str :: State -> String
-state2Str = undefined -- TODO
+createEmptyStack :: Stack
+createEmptyStack = []
+
+stack2Str :: Stack -> String
+stack2Str [] = ""
+stack2Str (x:xs) =
+  case x of
+    N myInt -> show myInt ++ " " ++ stack2Str xs
+    B myBool -> show myBool ++ " " ++ stack2Str xs
+
+createEmptyState :: State
+createEmptyState = []
+
+state2Str :: State -> String
+state2Str [] = ""
+state2Str (x:xs) = show (fst x) ++ "=" ++ show(snd  x) ++ "," ++ state2Str xs
 
 -- run :: (Code, Stack, State) -> (Code, Stack, State)
 run = undefined -- TODO
@@ -27,7 +39,7 @@ run = undefined -- TODO
 -- To help you test your assembler
 testAssembler :: Code -> (String, String)
 testAssembler code = (stack2Str stack, state2Str state)
-  where (_,stack,state) = run(code, createEmptyStack, createEmptyState)
+  where (_,stack,state) = run (code, createEmptyStack, createEmptyState)
 
 -- Examples:
 -- testAssembler [Push 10,Push 4,Push 3,Sub,Mult] == ("-10","")
@@ -59,7 +71,7 @@ parse = undefined -- TODO
 -- To help you test your parser
 testParser :: String -> (String, String)
 testParser programCode = (stack2Str stack, state2Str state)
-  where (_,stack,state) = run(compile (parse programCode), createEmptyStack, createEmptyState)
+  where (_,stack,state) = run (compile (parse programCode), createEmptyStack, createEmptyState)
 
 -- Examples:
 -- testParser "x := 5; x := x - 1;" == ("","x=4")
@@ -69,3 +81,8 @@ testParser programCode = (stack2Str stack, state2Str state)
 -- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
 -- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
 -- testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
+
+--main :: IO ()
+--main = do
+  --let myState = [('A', N 42), ('B', N 30)]
+  -- putStrLn $ "State as String: " ++ (state2Str myState)
