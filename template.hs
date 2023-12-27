@@ -1,3 +1,5 @@
+import Data.List (sortBy)
+
 -- PFL 2023/24 - Haskell practical assignment quickstart
 
 -- Part 1
@@ -30,8 +32,7 @@ createEmptyState :: State
 createEmptyState = []
 
 state2Str :: State -> String
-state2Str [] = ""
-state2Str (x:xs) = show (fst x) ++ "=" ++ show(snd  x) ++ "," ++ state2Str xs
+state2Str state = concatMap (\(k, v) -> k ++ "=" ++ show v ++ ",") (sortBy (\(k1, _) (k2, _) -> compare k1 k2) state)
 
 -- run :: (Code, Stack, State) -> (Code, Stack, State)
 run = undefined -- TODO
@@ -82,7 +83,7 @@ testParser programCode = (stack2Str stack, state2Str state)
 -- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
 -- testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
 
---main :: IO ()
---main = do
-  --let myState = [('A', N 42), ('B', N 30)]
-  -- putStrLn $ "State as String: " ++ (state2Str myState)
+main :: IO ()
+main = do
+  let myState = [("A", N 42), ("C", B True),("A", N 30)]
+  putStrLn $ "State as String: " ++ state2Str myState
