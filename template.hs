@@ -1,4 +1,4 @@
-import Data.List (sortBy)
+import Data.List (intersperse, sortBy)
 
 -- PFL 2023/24 - Haskell practical assignment quickstart
 
@@ -23,16 +23,27 @@ createEmptyStack = []
 
 stack2Str :: Stack -> String
 stack2Str [] = ""
-stack2Str (x:xs) =
-  case x of
-    N myInt -> show myInt ++ " " ++ stack2Str xs
-    B myBool -> show myBool ++ " " ++ stack2Str xs
+stack2Str [x] = getValue x
+  where
+    getValue (N myInt) = show myInt
+    getValue (B myBool) = show myBool
+stack2Str (x:xs) = getValue x ++ "," ++ stack2Str xs
+  where
+    getValue (N myInt) = show myInt
+    getValue (B myBool) = show myBool
 
 createEmptyState :: State
 createEmptyState = []
 
 state2Str :: State -> String
-state2Str state = concatMap (\(k, v) -> k ++ "=" ++ show v ++ ",") (sortBy (\(k1, _) (k2, _) -> compare k1 k2) state)
+state2Str state =
+  case sortedState of
+    [] -> ""
+    _  -> init $ concatMap (\(k, v) -> k ++ "=" ++ getValue v ++ ",") sortedState
+  where
+    sortedState = sortBy (\(k1, _) (k2, _) -> compare k1 k2) state
+    getValue (N n) = show n
+    getValue (B b) = show b
 
 -- run :: (Code, Stack, State) -> (Code, Stack, State)
 run = undefined -- TODO
@@ -85,5 +96,11 @@ testParser programCode = (stack2Str stack, state2Str state)
 
 main :: IO ()
 main = do
-  let myState = [("A", N 42), ("C", B True),("A", N 30)]
+  let myState = [("A", N 42), ("C", B True), ("A", N 30)]
   putStrLn $ "State as String: " ++ state2Str myState
+
+  let stack1 = [N 42, B True, N (-3)]
+  let stack2 = [B False, N 5, B True]
+
+  putStrLn $ "Stack 1: " ++ stack2Str stack1
+  putStrLn $ "Stack 2: " ++ stack2Str stack2
