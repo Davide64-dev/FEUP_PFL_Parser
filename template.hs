@@ -130,16 +130,65 @@ testAssembler code = (stack2Str stack, state2Str state)
 
 -- TODO: Define the types Aexp, Bexp, Stm and Program
 
--- compA :: Aexp -> Code
-compA = undefined -- TODO
+data Aexp
+  = VarAexp String         -- Variable
+  | NumAexp Int            -- Integer constant
+  | AddAexp Aexp Aexp      -- Addition
+  | SubAexp Aexp Aexp      -- Subtraction
+  | MulAexp Aexp Aexp      -- Multiplication
+  deriving Show
 
--- compB :: Bexp -> Code
-compB = undefined -- TODO
+data Bexp
+  = TrueBexp              -- Boolean constant True
+  | FalseBexp             -- Boolean constant False
+  | Eq Aexp Aexp          -- Equality
+  | Not Bexp              -- Negation
+  deriving Show
 
--- compile :: Program -> Code
-compile = undefined -- TODO
+data Stm
+  = Assign String Aexp       -- Assignment: x := a
+  | Seq Stm Stm              -- Sequence: instr1 ; instr2
+  | If Bexp Stm Stm          -- Conditional: if b then instr1 else instr2
+  | While Bexp Stm           -- Loop: while b do instr
+  deriving Show
 
--- parse :: String -> Program
+type Program = [Stm]
+
+compA :: Aexp -> Code
+compA (VarAexp var) = [Fetch var]
+
+compA (NumAexp num) = [Push (fromIntegral num)]
+
+compA (AddAexp v1 v2) = compA v1 ++ compA v2 ++ [Add]
+
+compA (SubAexp v1 v2) = compA v1 ++ compA v2 ++ [Sub]
+
+compA (MulAexp v1 v2) = compA v1 ++ compA v2 ++ [Mult]
+
+
+compB :: Bexp -> Code
+compB TrueBexp = [Tru]
+
+compB FalseBexp = [Fals]
+
+compB (Eq v1 v2) = compA v1 ++ compA v2 ++ [Equ]
+
+compB (Not b) = compB b ++ [Neg]
+
+
+compStm :: Stm -> Code
+compStm (Assign var inst) = compA inst ++ [Store var]
+
+compStm (Seq inst1 inst2) = compStm inst1 ++ compStm inst2
+
+compStm (If bexp inst1 inst2) = compB bexp ++ [Branch (compStm inst1) (compStm inst2)]
+
+compStm (While bexp inst) = [Loop (compB bexp) (compStm inst)]
+
+compile :: Program -> Code
+compile = concatMap compStm 
+
+parse :: String -> Program
 parse = undefined -- TODO
 
 -- To help you test your parser
