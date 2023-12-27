@@ -12,7 +12,7 @@ data Inst =
 type Code = [Inst]
 
 data NumberOrBool = N Int | B Bool
-  deriving (Show)
+  deriving (Show, Eq)
 
 type Stack = [NumberOrBool]
 
@@ -45,8 +45,70 @@ state2Str state =
     getValue (N n) = show n
     getValue (B b) = show b
 
--- run :: (Code, Stack, State) -> (Code, Stack, State)
-run = undefined -- TODO
+findValueState :: State -> String -> NumberOrBool
+findValueState [] _ = error "Key not found in state"
+findValueState ((k, v):remainState) key
+    | k == key  = v
+    | otherwise = findValueState remainState key
+
+checkKeyExists :: State -> String -> Bool
+
+checkKeyExists [] _ = False
+checkKeyExists ((k, v):remainState) key
+    | k == key  = True
+    | otherwise = checkKeyExists remainState key
+
+-- add the case where the value is already in the state
+addValueState :: State -> String -> NumberOrBool -> State
+
+addValueState state key value = (key, value) : state
+
+replaceValueState :: State -> String -> NumberOrBool -> State
+replaceValueState state key value = map updateEntry state
+  where
+    updateEntry (existingKey, existingValue)
+      | existingKey == key = (existingKey, value)
+      | otherwise = (existingKey, existingValue)
+
+addOrUpdateValue :: State -> String -> NumberOrBool -> State
+
+addOrUpdateValue state key value
+    | checkKeyExists state key = replaceValueState state key value
+    | otherwise = addValueState state key value
+
+
+run :: (Code, Stack, State) -> (Code, Stack, State)
+run ([], stack, state) = ([], stack, state)
+
+run (Add: remainCode, N firstElem : N secondElem : remainStack, state) = run(remainCode, N (firstElem + secondElem) : remainStack, state)
+
+run (Mult : remainCode, N firstElem : N secondElem : remainStack, state) = run(remainCode, N (firstElem * secondElem) : remainStack, state)
+
+run (Sub : remainCode, N firstElem : N secondElem : remainStack, state) = run(remainCode, N (firstElem - secondElem) : remainStack, state)
+
+run (Equ : remainCode, firstElem : secondElem : remainStack, state) = run(remainCode, B (firstElem == secondElem) : remainStack, state)
+
+run (Le : remainCode, N firstElem : N secondElem : remainStack, state) = run (remainCode, B (firstElem <= secondElem) : remainStack, state)
+
+run (Push n : remainCode, stack, state) = run (remainCode, N (fromIntegral n) : stack, state)
+
+run (Tru : remainCode, stack, state) = run(remainCode, B True : stack, state)
+
+run (Fals : remainCode, stack, state) = run(remainCode, B False : stack, state)
+
+run (Fetch x : remainCode, stack, state) = run(remainCode, findValueState state x : stack, state)
+
+run (Store x : remainCode, firstElem : remainStack, state) = run(remainCode, remainStack, addOrUpdateValue state x firstElem) 
+
+run (Neg : remainCode, B firstElem : remainStack, state) = run(remainCode, B (not firstElem) : remainStack, state)
+
+run (Noop : remainCode, stack, state) = run(remainCode, stack, state)
+
+run (Branch c1 c2 : remainCode, B True : stack, state) = run(c1, stack, state)
+
+run (Branch c1 c2 : remainCode, B False : stack, state) = run(c2, stack, state)
+
+run (Loop c1 c2 : remainCode, stack, state) = run(c1 ++  [Branch (c2 ++ [Loop c1 c2]) [Noop]], stack, state)
 
 -- To help you test your assembler
 testAssembler :: Code -> (String, String)
