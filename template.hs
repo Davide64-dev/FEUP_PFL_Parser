@@ -1,4 +1,6 @@
-import Data.List (intersperse, sortBy)
+
+import Data.List (intersperse, sortBy, splitAt)
+import Data.Char (isSpace, isDigit, isAlpha)
 
 -- PFL 2023/24 - Haskell practical assignment quickstart
 
@@ -188,8 +190,58 @@ compStm (While bexp inst) = [Loop (compB bexp) (compStm inst)]
 compile :: Program -> Code
 compile = concatMap compStm 
 
+data Token =
+  PlusTok
+  | TimesTok
+  | MinusTok
+  | OpenTok
+  | CloseTok
+  | AttTock
+  | InstTock
+  | WhileTock
+  | DoTock
+  | IfTock
+  | ThenTock
+  | ElseTock
+  | NotTock
+  | IntEqTock
+  | NumTok Integer
+  | VarTok String
+  deriving (Show)
+
+lexer :: String -> [Token]
+lexer [] = []
+lexer('+' : restStr) = PlusTok : lexer restStr
+lexer('*' : restStr) = TimesTok : lexer restStr
+lexer('-' : restStr) = MinusTok : lexer restStr
+lexer('(' : restStr) = OpenTok : lexer restStr
+lexer(')' : restStr) = CloseTok : lexer restStr
+lexer(':' : '=' : restStr) = AttTock : lexer restStr
+lexer(';' : restStr) = InstTock : lexer restStr
+lexer('w' : 'h' : 'i' : 'l' : 'e' : restStr) = WhileTock : lexer restStr
+lexer('d' : 'o' : restStr) = DoTock : lexer restStr
+lexer('i' : 'f' : restStr) = IfTock : lexer restStr
+lexer('t' : 'h' : 'e' : 'n' : restStr) = ThenTock : lexer restStr
+lexer('n' : 'o' : 't' : restStr) = NotTock : lexer restStr
+lexer ('=' : '=' : restStr) = IntEqTock : lexer restStr
+lexer('e' : 'l' : 's' : 'e' : restStr) = ElseTock : lexer restStr
+
+lexer str@(chr : restStr)
+  | isSpace chr = lexer restStr
+  | isDigit chr = NumTok (read numStr) : lexer restNum
+  | isAlpha chr = VarTok varStr : lexer restVar
+  where
+    (numStr, restNum) = span isDigit str
+    (varStr, restVar) = span isAlpha str
+
+buildData :: [Token] -> Program
+
+buildData [] = []
+buildData (VarTok x : AttTock : restTok) = [Assign x (NumAexp 42)]
+
+
 parse :: String -> Program
-parse = undefined -- TODO
+parse = buildData . lexer
 
 -- To help you test your parser
 testParser :: String -> (String, String)
@@ -198,20 +250,14 @@ testParser programCode = (stack2Str stack, state2Str state)
 
 -- Examples:
 -- testParser "x := 5; x := x - 1;" == ("","x=4")
--- testParser "if (not True and 2 <= 5 = 3 == 4) then x :=1 else y := 2" == ("","y=2")
--- testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;)" == ("","x=1")
+-- testParser "x := 0 - 2;" == ("","x=-2")
+-- testParser "if (not True and 2 <= 5 = 3 == 4) then x :=1; else y := 2;" == ("","y=2")
+-- testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;);" == ("","x=1")
 -- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;" == ("","x=2")
 -- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
+-- testParser "x := 44; if x <= 43 then x := 1; else (x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
+-- testParser "x := 42; if x <= 43 then (x := 33; x := x+1;) else x := 1;" == ("","x=34")
+-- testParser "if (1 == 0+1 = 2+1 == 3) then x := 1; else x := 2;" == ("","x=1")
+-- testParser "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;" == ("","x=2")
 -- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
 -- testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
-
-main :: IO ()
-main = do
-  let myState = [("A", N 42), ("C", B True), ("A", N 30)]
-  putStrLn $ "State as String: " ++ state2Str myState
-
-  let stack1 = [N 42, B True, N (-3)]
-  let stack2 = [B False, N 5, B True]
-
-  putStrLn $ "Stack 1: " ++ stack2Str stack1
-  putStrLn $ "Stack 2: " ++ stack2Str stack2
