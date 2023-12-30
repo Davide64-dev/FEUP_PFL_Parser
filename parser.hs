@@ -106,10 +106,14 @@ ifStm = do
   cond <- bExpression
   reserved "then"
   stmt1 <- statement
-  optionalElse <- optionMaybe (reserved "else" >> statement)
-  case optionalElse of
-    Just stmt2 -> return $ If cond stmt1 stmt2
-    Nothing    -> return $ If cond stmt1 Skip
+  optionalSemi <- optionMaybe semi
+  case optionalSemi of
+    Just _ -> do
+      reserved "else"
+      stmt2 <- statement
+      return $ If cond stmt1 stmt2
+    Nothing -> return $ If cond stmt1 Skip
+
 
 
 
