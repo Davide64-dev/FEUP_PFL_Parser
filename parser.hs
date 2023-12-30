@@ -90,24 +90,28 @@ statement =   parens statement
           <|> sequenceOfStm
 
 sequenceOfStm =
-  do list <- sepBy1 statement' semi
+  do list <- sepBy statement' semi
      return $ if length list == 1 then head list else Seq list
+
 
 statement' :: Parser Stm
 statement' =   ifStm
            <|> whileStm
            <|> assignStm
+           <|> (try (string "" >> notFollowedBy alphaNum) >> return Skip)
 
 ifStm :: Parser Stm
 ifStm = do
   reserved "if"
-  cond  <- bExpression
+  cond <- bExpression
   reserved "then"
   stmt1 <- statement
   optionalElse <- optionMaybe (reserved "else" >> statement)
-  return $ case optionalElse of
-    Just stmt2 -> If cond stmt1 stmt2
-    Nothing    -> If cond stmt1 Skip
+  case optionalElse of
+    Just stmt2 -> return $ If cond stmt1 stmt2
+    Nothing    -> return $ If cond stmt1 Skip
+
+
 
 whileStm :: Parser Stm
 whileStm =
