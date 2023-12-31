@@ -98,6 +98,7 @@ statement' :: Parser Stm
 statement' =   ifStm
            <|> whileStm
            <|> assignStm
+           <|> (try (string "else" >> statement) >> return (Skip :: Stm))
            <|> (try (string "" >> notFollowedBy alphaNum) >> return Skip)
 
 ifStm :: Parser Stm
