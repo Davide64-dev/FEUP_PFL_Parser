@@ -46,7 +46,7 @@ state2Str state =
     getValue (B b) = show b
 
 findValueState :: State -> String -> NumberOrBool
-findValueState [] _ = error "Key not found in state"
+findValueState [] _ = error "Run-time error"
 findValueState ((k, v):remainState) key
     | k == key  = v
     | otherwise = findValueState remainState key
