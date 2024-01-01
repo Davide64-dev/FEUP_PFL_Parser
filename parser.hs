@@ -1,25 +1,13 @@
--- expr ::= term + expr | term - expr | term
+module Parser where
 
--- term ::= factor*term | factor
+import System.IO
+import Control.Monad
+import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec.Expr
+import Text.ParserCombinators.Parsec.Language
+import qualified Text.ParserCombinators.Parsec.Token as Token
 
--- factor ::= (expr) | int | string
-
--- att ::= string := expr;
-
--- boolExp ::= expr == expr | (expr == expr) | expr <= expr | (expr <= expr) | not boolExp | not (boolExp) | 
---             boolExp = boolExp | (boolExp = boolExp) | boolExp and boolexp | (boolExp and boolExp)
-
--- inst := att;inst | att;
-
--- whi ::= while (boolExp) do att | while (boolExp) do (inst)
-
--- if ::= if boolExp then att; | if boolExp then (inst) | if boolExp then att;else att |
---        if boolExp then (inst) else (inst)
-
--- S ::= A S | A
-
--- A ::= inst | whi | if
-
+-- Part 2
 
 data Aexp
   = VarAexp String         -- Variable
@@ -30,11 +18,11 @@ data Aexp
   deriving Show
 
 data Bexp
-  = BoolConst Bool          -- Boolean constant False
+  = BoolConst Bool        -- Boolean constant False
   | IntEq Aexp Aexp       -- Equality
   | IntIneq Aexp Aexp     -- Inequality
   | BoolEq Bexp Bexp      -- Boolean Equality
-  | BoolAnd Bexp Bexp         -- Boolean And
+  | BoolAnd Bexp Bexp     -- Boolean And
   | Not Bexp              -- Negation
   deriving Show
 
@@ -43,8 +31,10 @@ data Stm
   | Seq [Stm]                -- Sequence: various instructions
   | If Bexp Stm Stm          -- Conditional: if b then instr1 else instr2
   | While Bexp Stm           -- Loop: while b do instr
-  | Skip
+  | Skip                     -- Skip: Does Nothing - Just a useful statement
   deriving Show
+
+type Program = [Stm]
 
 languageDef =
    emptyDef {
@@ -107,7 +97,8 @@ ifStm = do
 
 
 ifElseParser :: Parser Stm
-ifElseParser = parens statement <|> whileStm <|> ifStm <|> assignStm
+ifElseParser = whileStm <|> ifStm <|> assignStm <|> parens statement
+
 
 
 whileStm :: Parser Stm
@@ -137,8 +128,8 @@ aOperators = [ [Infix  (reservedOp "*"   >> return MulAexp) AssocLeft]
               ]
 
 bOperators = [ [Prefix (reservedOp "not" >> return Not )          ]
+              , [Infix  (reservedOp "="  >> return BoolEq) AssocLeft]
              , [Infix  (reservedOp "and" >> return BoolAnd) AssocLeft]
-             , [Infix  (reservedOp "="  >> return BoolEq) AssocLeft]
              ]
 
 
@@ -191,16 +182,8 @@ intIneqExpression = do
   return $ IntIneq a1 a2
 
 
-
-parseString :: String -> Stm
-parseString str =
-  case parse whileParser "" str of
+parse :: String -> Program
+parse str =
+  case Text.ParserCombinators.Parsec.parse whileParser "" str of
     Left e  -> error $ show e
-    Right r -> r
-
-parseFile :: String -> IO Stm
-parseFile file =
-  do program  <- readFile file
-     case parse whileParser "" program of
-       Left e  -> print e >> fail "parse error"
-       Right r -> return r
+    Right r -> [r]
