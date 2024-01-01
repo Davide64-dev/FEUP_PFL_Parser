@@ -40,6 +40,8 @@ test20 = testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2
 test21 = testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
 
 
+
+-- For Code Testing
 main :: IO ()
 main = do
   putStrLn "Starting the Assembler tests..."
