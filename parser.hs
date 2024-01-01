@@ -20,13 +20,6 @@
 
 -- A ::= inst | whi | if
 
-import System.IO
-import Control.Monad
-import Text.ParserCombinators.Parsec
-import Text.ParserCombinators.Parsec.Expr
-import Text.ParserCombinators.Parsec.Language
-import qualified Text.ParserCombinators.Parsec.Token as Token
-import GHC.Plugins (all2)
 
 data Aexp
   = VarAexp String         -- Variable
@@ -41,7 +34,7 @@ data Bexp
   | IntEq Aexp Aexp       -- Equality
   | IntIneq Aexp Aexp     -- Inequality
   | BoolEq Bexp Bexp      -- Boolean Equality
-  | And Bexp Bexp         -- Boolean And
+  | BoolAnd Bexp Bexp         -- Boolean And
   | Not Bexp              -- Negation
   deriving Show
 
@@ -98,8 +91,9 @@ statement' :: Parser Stm
 statement' =   ifStm
            <|> whileStm
            <|> assignStm
-           <|> (try (string "else" >> statement) >> return (Skip :: Stm))
+           <|> (try (lookAhead (string "else")) >> return Skip)
            <|> (try (string "" >> notFollowedBy alphaNum) >> return Skip)
+
 
 ifStm :: Parser Stm
 ifStm = do
@@ -107,15 +101,13 @@ ifStm = do
   cond <- bExpression
   reserved "then"
   stmt1 <- statement
-  optionalSemi <- optionMaybe semi
-  case optionalSemi of
-    Just _ -> do
-      reserved "else"
-      stmt2 <- statement
-      return $ If cond stmt1 stmt2
-    Nothing -> return $ If cond stmt1 Skip
+  reserved "else"
+  stmt2 <- ifElseParser
+  return $ If cond stmt1 stmt2
 
 
+ifElseParser :: Parser Stm
+ifElseParser = parens statement <|> whileStm <|> ifStm <|> assignStm
 
 
 whileStm :: Parser Stm
@@ -145,7 +137,7 @@ aOperators = [ [Infix  (reservedOp "*"   >> return MulAexp) AssocLeft]
               ]
 
 bOperators = [ [Prefix (reservedOp "not" >> return Not )          ]
-             , [Infix  (reservedOp "and" >> return And) AssocLeft]
+             , [Infix  (reservedOp "and" >> return BoolAnd) AssocLeft]
              , [Infix  (reservedOp "="  >> return BoolEq) AssocLeft]
              ]
 

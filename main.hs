@@ -1,6 +1,14 @@
 
 import Data.List (intersperse, sortBy, splitAt)
 import Data.Char (isSpace, isDigit, isAlpha)
+import System.IO
+import Control.Monad
+import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec.Expr
+import Text.ParserCombinators.Parsec.Language
+import qualified Text.ParserCombinators.Parsec.Token as Token
+import GHC.Plugins (all2)
+
 
 -- PFL 2023/24 - Haskell practical assignment quickstart
 
@@ -34,10 +42,10 @@ stack2Str (x:xs) = getValue x ++ "," ++ stack2Str xs
     getValue (N myInt) = show myInt
     getValue (B myBool) = show myBool
 
-createEmptyState :: State
+createEmptyState :: Main.State
 createEmptyState = []
 
-state2Str :: State -> String
+state2Str :: Main.State -> String
 state2Str state =
   case sortedState of
     [] -> ""
@@ -47,39 +55,39 @@ state2Str state =
     getValue (N n) = show n
     getValue (B b) = show b
 
-findValueState :: State -> String -> NumberOrBool
+findValueState :: Main.State -> String -> NumberOrBool
 findValueState [] _ = error "Key not found in state"
 findValueState ((k, v):remainState) key
     | k == key  = v
     | otherwise = findValueState remainState key
 
-checkKeyExists :: State -> String -> Bool
+checkKeyExists :: Main.State -> String -> Bool
 
 checkKeyExists [] _ = False
 checkKeyExists ((k, v):remainState) key
     | k == key  = True
     | otherwise = checkKeyExists remainState key
 
--- add the case where the value is already in the state
-addValueState :: State -> String -> NumberOrBool -> State
+
+addValueState :: Main.State -> String -> NumberOrBool -> Main.State
 
 addValueState state key value = (key, value) : state
 
-replaceValueState :: State -> String -> NumberOrBool -> State
+replaceValueState :: Main.State -> String -> NumberOrBool -> Main.State
 replaceValueState state key value = map updateEntry state
   where
     updateEntry (existingKey, existingValue)
       | existingKey == key = (existingKey, value)
       | otherwise = (existingKey, existingValue)
 
-addOrUpdateValue :: State -> String -> NumberOrBool -> State
+addOrUpdateValue :: Main.State -> String -> NumberOrBool -> Main.State
 
 addOrUpdateValue state key value
     | checkKeyExists state key = replaceValueState state key value
     | otherwise = addValueState state key value
 
 
-run :: (Code, Stack, State) -> (Code, Stack, State)
+run :: (Code, Stack, Main.State) -> (Code, Stack, Main.State)
 run ([], stack, state) = ([], stack, state)
 
 run (Add: remainCode, N firstElem : N secondElem : remainStack, state) = run(remainCode, N (firstElem + secondElem) : remainStack, state)
@@ -89,6 +97,8 @@ run (Mult : remainCode, N firstElem : N secondElem : remainStack, state) = run(r
 run (Sub : remainCode, N firstElem : N secondElem : remainStack, state) = run(remainCode, N (firstElem - secondElem) : remainStack, state)
 
 run (Equ : remainCode, firstElem : secondElem : remainStack, state) = run(remainCode, B (firstElem == secondElem) : remainStack, state)
+
+run (And : remainCode, B firstElem :B secondElem : remainStack, state) = run(remainCode, B (firstElem && secondElem) : remainStack, state)
 
 run (Le : remainCode, N firstElem : N secondElem : remainStack, state) = run (remainCode, B (firstElem <= secondElem) : remainStack, state)
 
@@ -106,9 +116,9 @@ run (Neg : remainCode, B firstElem : remainStack, state) = run(remainCode, B (no
 
 run (Noop : remainCode, stack, state) = run(remainCode, stack, state)
 
-run (Branch c1 c2 : remainCode, B True : stack, state) = run(c1, stack, state)
+run (Branch c1 c2 : remainCode, B True : stack, state) = run(c1 ++ remainCode, stack, state)
 
-run (Branch c1 c2 : remainCode, B False : stack, state) = run(c2, stack, state)
+run (Branch c1 c2 : remainCode, B False : stack, state) = run(c2 ++ remainCode, stack, state)
 
 run (Loop c1 c2 : remainCode, stack, state) = run(c1 ++  [Branch (c2 ++ [Loop c1 c2]) [Noop]], stack, state)
 
@@ -141,112 +151,62 @@ data Aexp
   deriving Show
 
 data Bexp
-  = TrueBexp              -- Boolean constant True
-  | FalseBexp             -- Boolean constant False
-  | Eq Aexp Aexp          -- Equality
+  = BoolConst Bool          -- Boolean constant False
+  | IntEq Aexp Aexp       -- Equality
+  | IntIneq Aexp Aexp     -- Inequality
+  | BoolEq Bexp Bexp      -- Boolean Equality
+  | BoolAnd Bexp Bexp         -- Boolean And
   | Not Bexp              -- Negation
   deriving Show
 
 data Stm
   = Assign String Aexp       -- Assignment: x := a
-  | Seq Stm Stm              -- Sequence: instr1 ; instr2
+  | Seq [Stm]                -- Sequence: various instructions
   | If Bexp Stm Stm          -- Conditional: if b then instr1 else instr2
   | While Bexp Stm           -- Loop: while b do instr
+  | Skip
   deriving Show
 
 type Program = [Stm]
 
 compA :: Aexp -> Code
 compA (VarAexp var) = [Fetch var]
-
 compA (NumAexp num) = [Push (fromIntegral num)]
-
 compA (AddAexp v1 v2) = compA v1 ++ compA v2 ++ [Add]
-
-compA (SubAexp v1 v2) = compA v1 ++ compA v2 ++ [Sub]
-
+compA (SubAexp v1 v2) = compA v2 ++ compA v1 ++ [Sub]
 compA (MulAexp v1 v2) = compA v1 ++ compA v2 ++ [Mult]
 
-
 compB :: Bexp -> Code
-compB TrueBexp = [Tru]
-
-compB FalseBexp = [Fals]
-
-compB (Eq v1 v2) = compA v1 ++ compA v2 ++ [Equ]
-
+compB (BoolConst True) = [Tru]
+compB (BoolConst False) = [Fals]
+compB (IntEq v1 v2) = compA v1 ++ compA v2 ++ [Equ]
+compB (IntIneq v1 v2) = compA v2 ++ compA v1 ++ [Le]
+compB (BoolEq b1 b2) = compB b1 ++ compB b2 ++ [Equ]
+compB (BoolAnd b1 b2) = compB b1 ++ compB b2 ++ [And]
 compB (Not b) = compB b ++ [Neg]
 
-
 compStm :: Stm -> Code
-compStm (Assign var inst) = compA inst ++ [Store var]
-
-compStm (Seq inst1 inst2) = compStm inst1 ++ compStm inst2
-
-compStm (If bexp inst1 inst2) = compB bexp ++ [Branch (compStm inst1) (compStm inst2)]
-
-compStm (While bexp inst) = [Loop (compB bexp) (compStm inst)]
+compStm (Assign var aexp) = compA aexp ++ [Store var]
+compStm (Seq stmts) = concatMap compStm stmts  -- Process all statements in the sequence
+compStm (If bexp s1 s2) = compB bexp ++ [Branch (compStm s1) (compStm s2)]
+compStm (While bexp body) = [Loop (compB bexp) (compStm body)]
+compStm Skip = []
 
 compile :: Program -> Code
-compile = concatMap compStm 
-
-data Token =
-  PlusTok
-  | TimesTok
-  | MinusTok
-  | OpenTok
-  | CloseTok
-  | AttTock
-  | InstTock
-  | WhileTock
-  | DoTock
-  | IfTock
-  | ThenTock
-  | ElseTock
-  | NotTock
-  | IntEqTock
-  | NumTok Integer
-  | VarTok String
-  deriving (Show)
-
-lexer :: String -> [Token]
-lexer [] = []
-lexer('+' : restStr) = PlusTok : lexer restStr
-lexer('*' : restStr) = TimesTok : lexer restStr
-lexer('-' : restStr) = MinusTok : lexer restStr
-lexer('(' : restStr) = OpenTok : lexer restStr
-lexer(')' : restStr) = CloseTok : lexer restStr
-lexer(':' : '=' : restStr) = AttTock : lexer restStr
-lexer(';' : restStr) = InstTock : lexer restStr
-lexer('w' : 'h' : 'i' : 'l' : 'e' : restStr) = WhileTock : lexer restStr
-lexer('d' : 'o' : restStr) = DoTock : lexer restStr
-lexer('i' : 'f' : restStr) = IfTock : lexer restStr
-lexer('t' : 'h' : 'e' : 'n' : restStr) = ThenTock : lexer restStr
-lexer('n' : 'o' : 't' : restStr) = NotTock : lexer restStr
-lexer ('=' : '=' : restStr) = IntEqTock : lexer restStr
-lexer('e' : 'l' : 's' : 'e' : restStr) = ElseTock : lexer restStr
-
-lexer str@(chr : restStr)
-  | isSpace chr = lexer restStr
-  | isDigit chr = NumTok (read numStr) : lexer restNum
-  | isAlpha chr = VarTok varStr : lexer restVar
-  where
-    (numStr, restNum) = span isDigit str
-    (varStr, restVar) = span isAlpha str
-
-buildData :: [Token] -> Program
-
-buildData [] = []
-buildData (VarTok x : AttTock : restTok) = [Assign x (NumAexp 42)]
+compile = concatMap compStm
 
 
 parse :: String -> Program
-parse = buildData . lexer
+parse str =
+  case Text.ParserCombinators.Parsec.parse whileParser "" str of
+    Left e  -> error $ show e
+    Right r -> [r]  -- Wrap the result in a list to form a Program
+
 
 -- To help you test your parser
 testParser :: String -> (String, String)
 testParser programCode = (stack2Str stack, state2Str state)
-  where (_,stack,state) = run (compile (parse programCode), createEmptyStack, createEmptyState)
+  where (_,stack,state) = run (compile (Main.parse programCode), createEmptyStack, createEmptyState)
 
 -- Examples:
 -- testParser "x := 5; x := x - 1;" == ("","x=4")
@@ -261,3 +221,148 @@ testParser programCode = (stack2Str stack, state2Str state)
 -- testParser "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;" == ("","x=2")
 -- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
 -- testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
+
+languageDef =
+   emptyDef {
+              Token.identStart      = letter
+            , Token.identLetter     = alphaNum
+            , Token.reservedNames   = [ "if"
+                                      , "then"
+                                      , "else"
+                                      , "while"
+                                      , "do"
+                                      , "True"
+                                      , "False"
+                                      , "not"
+                                      , "and"
+                                      ]
+            , Token.reservedOpNames = ["+", "-", "*", ":="
+                                      , "<=", "and", "not"
+                                      ]
+            }
+
+lexer = Token.makeTokenParser languageDef
+
+identifier = Token.identifier lexer -- parses an identifier
+reserved   = Token.reserved   lexer -- parses a reserved name
+reservedOp = Token.reservedOp lexer -- parses an operator
+parens     = Token.parens     lexer -- parses surrounding parenthesis:
+integer    = Token.integer    lexer -- parses an integer
+semi       = Token.semi       lexer -- parses a semicolon
+whiteSpace = Token.whiteSpace lexer -- parses whitespace
+
+whileParser :: Parser Stm
+whileParser = whiteSpace >> statement
+
+statement :: Parser Stm
+statement =   parens statement
+          <|> sequenceOfStm
+
+sequenceOfStm =
+  do list <- sepBy statement' semi
+     return $ if length list == 1 then head list else Seq list
+
+
+statement' :: Parser Stm
+statement' =   ifStm
+           <|> whileStm
+           <|> assignStm
+           <|> (try (lookAhead (string "else")) >> return Skip)
+           <|> (try (string "" >> notFollowedBy alphaNum) >> return Skip)
+
+
+ifStm :: Parser Stm
+ifStm = do
+  reserved "if"
+  cond <- bExpression
+  reserved "then"
+  stmt1 <- statement
+  reserved "else"
+  stmt2 <- ifElseParser
+  return $ If cond stmt1 stmt2
+
+
+ifElseParser :: Parser Stm
+ifElseParser = whileStm <|> ifStm <|> assignStm <|> parens statement
+
+
+
+whileStm :: Parser Stm
+whileStm =
+  do reserved "while"
+     cond <- bExpression
+     reserved "do"
+     stmt <- statement
+     return $ While cond stmt
+
+assignStm :: Parser Stm
+assignStm =
+  do var  <- identifier
+     reservedOp ":="
+     expr <- aExpression
+     return $ Assign var expr
+
+aExpression :: Parser Aexp
+aExpression = buildExpressionParser aOperators aTerm
+
+bExpression :: Parser Bexp
+bExpression = buildExpressionParser bOperators bTerm
+
+aOperators = [ [Infix  (reservedOp "*"   >> return MulAexp) AssocLeft]
+             , [Infix  (reservedOp "+"   >> return AddAexp) AssocLeft,
+                Infix  (reservedOp "-"   >> return SubAexp) AssocLeft]
+              ]
+
+bOperators = [ [Prefix (reservedOp "not" >> return Not )          ]
+              , [Infix  (reservedOp "="  >> return BoolEq) AssocLeft]
+             , [Infix  (reservedOp "and" >> return BoolAnd) AssocLeft]
+             ]
+
+
+aTerm =  parens aExpression
+     <|> liftM VarAexp identifier
+     <|> liftM (NumAexp . fromIntegral) integer
+
+bTerm =  parens bExpression
+     <|> (reserved "True"  >> return (BoolConst True))
+     <|> (reserved "False" >> return (BoolConst False))
+     <|> try intEqExpression
+     <|> try intIneqExpression
+
+-- Addition expression
+addExpression :: Parser Aexp
+addExpression =
+  do a1 <- aExpression
+     reservedOp "+"
+     a2 <- aExpression
+     return $ AddAexp a1 a2
+
+-- Subtraction expression
+subExpression :: Parser Aexp
+subExpression =
+  do a1 <- aExpression
+     reservedOp "-"
+     a2 <- aExpression
+     return $ SubAexp a1 a2
+
+-- Multiplication expression
+mulExpression :: Parser Aexp
+mulExpression =
+  do a1 <- aExpression
+     reservedOp "*"
+     a2 <- aExpression
+     return $ MulAexp a1 a2
+
+intEqExpression :: Parser Bexp
+intEqExpression = do
+  a1 <- aExpression
+  reservedOp "=="
+  a2 <- aExpression
+  return $ IntEq a1 a2
+
+intIneqExpression :: Parser Bexp
+intIneqExpression = do
+  a1 <- aExpression
+  reservedOp "<="
+  a2 <- aExpression
+  return $ IntIneq a1 a2
