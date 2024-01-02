@@ -4,6 +4,21 @@
 - Davide Pinto Teixeira - up202109860 - 50%
 - Maria Abreu da Costa - up202108849 - 50%
 
+## Instalation and Execution
+To run the project, download the PFL_TP2_T09_G07.zip file and unzip it. Inside the 'src' directory, use the following commands to compile the code:
+
+```
+ghc -package parsec main.hs
+./main
+```
+
+When in the ghci:
+
+```
+:set -package parsec
+:l main.hs
+```
+
 ## Project's Description and Implementation
 
 ### First Part
