@@ -12,7 +12,10 @@ In the initial phase of the project, we were tasked with defining and implementi
 #### Implementation
 To facilitate the implementation, we began by defining essential data types. The NumberOrBool type was introduced to represent values that could be either boolean or integer. Additionally, the Stack type was established as a list composed of elements with the NumberOrBool type. Finally, the State type was defined as a list of pairs, each consisting of a string and its associated NumberOrBool value.
 Subsequently, we developed several essential functions to manage the state and stack components.
-(**print I1**) 
+
+<p align="center">
+  <img src="img/I1" />
+</p>
 
 These included functions to create an empty stack (createEmptyStack) and an empty state (createEmptyState). Additionally, functions like stack2Str and state2Str were implemented to convert the stack and state to strings, respectively. For effective value manipulation, functions such as findValueState and checkKeyExists were introduced to retrieve values associated with variables and check the existence of variables in the state, respectively. Furthermore, functions to add pairs to the state (addValueState), replace a value in the state (replaceValueState), and add or update values in the state (addOrUpdateValue) were also defined.
 (**print I2**)
