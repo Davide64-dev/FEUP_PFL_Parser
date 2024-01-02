@@ -14,7 +14,7 @@ To facilitate the implementation, we began by defining essential data types. The
 Subsequently, we developed several essential functions to manage the state and stack components.
 
 <p align="center">
-  <img src="img/I1" />
+  <img src="img/I1.png" />
 </p>
 
 These included functions to create an empty stack (createEmptyStack) and an empty state (createEmptyState). Additionally, functions like stack2Str and state2Str were implemented to convert the stack and state to strings, respectively. For effective value manipulation, functions such as findValueState and checkKeyExists were introduced to retrieve values associated with variables and check the existence of variables in the state, respectively. Furthermore, functions to add pairs to the state (addValueState), replace a value in the state (replaceValueState), and add or update values in the state (addOrUpdateValue) were also defined.
