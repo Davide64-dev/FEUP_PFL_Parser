@@ -5,22 +5,28 @@ import Data.Char (isSpace, isDigit, isAlpha)
 
 -- Part 1
 
+-- Defines the assembly instructions
 data Inst =
   Push Integer | Add | Mult | Sub | Tru | Fals | Equ | Le | And | Neg | Fetch String | Store String | Noop |
   Branch Code Code | Loop Code Code
   deriving Show
 type Code = [Inst]
 
+-- Data type to define integers or booleans
 data NumberOrBool = N Int | B Bool
   deriving (Show, Eq)
 
+-- Data type to define the stack
 type Stack = [NumberOrBool]
 
+-- Data type to define the state
 type State = [(String, NumberOrBool)]
 
+-- Creates an empty stack
 createEmptyStack :: Stack
 createEmptyStack = []
 
+-- Converts the stack into a string
 stack2Str :: Stack -> String
 stack2Str [] = ""
 stack2Str [x] = getValue x
@@ -32,9 +38,11 @@ stack2Str (x:xs) = getValue x ++ "," ++ stack2Str xs
     getValue (N myInt) = show myInt
     getValue (B myBool) = show myBool
 
+-- Creates an empty state
 createEmptyState :: State
 createEmptyState = []
 
+-- Converts the state into a string
 state2Str :: State -> String
 state2Str state =
   case sortedState of
@@ -45,12 +53,14 @@ state2Str state =
     getValue (N n) = show n
     getValue (B b) = show b
 
+-- Finds the value of a variable in the state
 findValueState :: State -> String -> NumberOrBool
 findValueState [] _ = error "Run-time error"
 findValueState ((k, v):remainState) key
     | k == key  = v
     | otherwise = findValueState remainState key
 
+-- Checks if a variable exists in the state
 checkKeyExists :: State -> String -> Bool
 
 checkKeyExists [] _ = False
@@ -58,11 +68,12 @@ checkKeyExists ((k, v):remainState) key
     | k == key  = True
     | otherwise = checkKeyExists remainState key
 
-
+-- Adds a variable and its value to the state
 addValueState :: State -> String -> NumberOrBool -> State
 
 addValueState state key value = (key, value) : state
 
+-- Replaces the value of a variable in the state
 replaceValueState :: State -> String -> NumberOrBool -> State
 replaceValueState state key value = map updateEntry state
   where
@@ -70,13 +81,14 @@ replaceValueState state key value = map updateEntry state
       | existingKey == key = (existingKey, value)
       | otherwise = (existingKey, existingValue)
 
+-- Adds or updates the value of a variable in the state
 addOrUpdateValue :: State -> String -> NumberOrBool -> State
 
 addOrUpdateValue state key value
     | checkKeyExists state key = replaceValueState state key value
     | otherwise = addValueState state key value
 
-
+-- Executes the assembly code
 run :: (Code, Stack, State) -> (Code, Stack, State)
 run ([], stack, state) = ([], stack, state)
 

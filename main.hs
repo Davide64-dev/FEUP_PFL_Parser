@@ -5,10 +5,11 @@ import Parser
 
 -- PFL 2023/24 - Haskell practical assignment quickstart
 
-
+-- Tests the Assembler
 testAssembler :: Code -> (String, String)
 testAssembler code = (stack2Str stack, state2Str state)
   where (_,stack,state) = run (code, createEmptyStack, createEmptyState)
+
 
 -- Assembler Examples:
 test1 = testAssembler [Push 10,Push 4,Push 3,Sub,Mult] == ("-10","")
@@ -21,6 +22,8 @@ test7 = testAssembler [Push (-20),Push (-21), Le] == ("True","")
 test8 = testAssembler [Push 5,Store "x",Push 1,Fetch "x",Sub,Store "x"] == ("","x=4")
 test9 = testAssembler [Push 10,Store "i",Push 1,Store "fact",Loop [Push 1,Fetch "i",Equ,Neg] [Fetch "i",Fetch "fact",Mult,Store "fact",Push 1,Fetch "i",Sub,Store "i"]] == ("","fact=3628800,i=1")
 
+
+-- Tests the Parser
 testParser :: String -> (String, String)
 testParser programCode = (stack2Str stack, state2Str state)
   where (_,stack,state) = run (compile (Parser.parse programCode), createEmptyStack, createEmptyState)
