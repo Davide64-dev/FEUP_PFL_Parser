@@ -18,13 +18,24 @@ Subsequently, we developed several essential functions to manage the state and s
 </p>
 
 These included functions to create an empty stack (createEmptyStack) and an empty state (createEmptyState). Additionally, functions like stack2Str and state2Str were implemented to convert the stack and state to strings, respectively. For effective value manipulation, functions such as findValueState and checkKeyExists were introduced to retrieve values associated with variables and check the existence of variables in the state, respectively. Furthermore, functions to add pairs to the state (addValueState), replace a value in the state (replaceValueState), and add or update values in the state (addOrUpdateValue) were also defined.
-(**print I2**)
-(**print I3**)
+
+<p align="center">
+  <img src="img/I2.png" />
+</p>
+
+<p align="center">
+  <img src="img/I3.png" />
+</p>
 
 Finally, the interpreter (run function) was designed to process a list of instructions, ensuring the stack and state were updated appropriately. This function handles the operations specified in the project description. It returns the modified code, stack, and state. In the event of an error, the function raises a runtime error.
-(**print I4**)
-(**print I5**)
 
+<p align="center">
+  <img src="img/I4.png" />
+</p>
+
+<p align="center">
+  <img src="img/I5.png" />
+</p>
 
 
 ### Second Part
@@ -32,17 +43,32 @@ In the final phase of the project, we implemented the compiler to convert statem
 
 #### Implementation
 Initially, we established data types to represent arithmetic expressions (Aexp), boolean expressions (Bexp), and statements (Stm).
-(**print I6**)
+
+<p align="center">
+  <img src="img/I6.png" />
+</p>
 
 Following that, we defined the lexer (lexer). This module is tasked with breaking down the input string into individual tokens, facilitating the parsing process.
-(**print I7**)
-(**print I8**)
+
+<p align="center">
+  <img src="img/I7.png" />
+</p>
+
+<p align="center">
+  <img src="img/I8.png" />
+</p>
 
 Subsquently, we formulated the parser functions designed to parse distinct statements and operations, which lead to the creation of the primary parser function (parse).
-(**print I9**)
+
+<p align="center">
+  <img src="img/I9.png" />
+</p>
 
 Finally, we defined the compilers which are responsible to handle the translation of statements (compStm) and arithmetic (compA) and boolean (compB) expressions into the machine instructions, as mentioned in the project's description.
-(**print I10**)
+
+<p align="center">
+  <img src="img/I10.png" />
+</p>
 
 
 
